@@ -1,6 +1,17 @@
 import scapy.all as scapy
 import argparse
+import os
 
+cwd = os.getcwd()
+
+from mac_vendor_lookup import MacLookup, BaseMacLookup
+
+print("[*] Welcome")
+
+BaseMacLookup.cache_path = cwd + "/mac-vendors.txt"
+
+mac = MacLookup()
+# mac.update_vendors()
 
 """
     Summary
@@ -11,6 +22,7 @@ import argparse
         scapy.ls(scapy.ARP())
 """
 def scan(ip_address):
+    print("[+] Scanning Network")
     arp_request_packet = scapy.ARP(pdst=ip_address)
     broadcast_packet = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
 
@@ -19,10 +31,11 @@ def scan(ip_address):
     # answered_list, unanswered_list = scapy.srp(arp_request_packet, timeout=1)
     answered_list = scapy.srp(arp_request_packet, timeout=1, verbose=False)[0]
 
+    # print(answered_list.summary())
+
     client_list = []
 
     for element in answered_list:
-
         client_dict = {
             "ip_address": element[1].psrc,
             "mac_address": element[1].hwsrc
@@ -35,12 +48,13 @@ def scan(ip_address):
 
 def print_result_list(client_list):
     # Header
-    print('----------------------------------------------')
-    print("IP\t\t\tMac Address")
-    print('----------------------------------------------')
+    print("IP\t\t\tMac Addres\t\tVendor")
+    print('-----------------------------------------------------------------------')
 
     for element in client_list:
-        print(element["ip_address"] + '\t\t' + element["mac_address"] + '\n')
+        vendor = str(get_vendor(element["mac_address"]))
+
+        print(element["ip_address"] + '\t\t' + element["mac_address"] + '\t\t' + vendor + '\n')
 
 
 def get_arguments():
@@ -50,8 +64,22 @@ def get_arguments():
 
     return options
 
+
+def get_vendor(mac_address):
+    vendor = "Unknown"
+
+    try:
+        vendor = mac.lookup(mac_address)
+    except KeyError as e:
+        pass
+
+    return vendor
+
+
 options = get_arguments()
 
 client_list = scan(options.target)
+
+print("[+] Network Scan Complete \n")
 
 print_result_list(client_list)
